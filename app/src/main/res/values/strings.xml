@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">AndroidTrackerApp</string>
+    <string name="name">Name</string>
+    <string name="textview">Координаты</string>
+    <string name="button">Button</string>
+    <string name="Карта">Карта</string>
+    <string name="Настройки">Настройки</string>
+    <string name="Старт">Старт</string>
+    <string name="title_activity_maps2">Карта</string>
+    <string name="title_activity_maps">Map</string>
+</resources>
