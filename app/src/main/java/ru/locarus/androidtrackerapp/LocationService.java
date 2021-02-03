@@ -33,18 +33,20 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.util.List;
 
 import static ru.locarus.androidtrackerapp.Constants.TAG;
 
 public class LocationService extends Service {
+    SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
     Thread threadSocket;
     private int interval;
-    private String action;
     private Socket socket;
     private BufferedReader in; // поток чтения из сокета
     private BufferedWriter out; // поток чтения в сокет
-    private String SERVER_IP = "91.201.40.21";
-    private int SERVER_PORT = 1145;
+    private String SERVER_IP = sharedPreferences.getString("server_address","lserver1.ru");
+    private int SERVER_PORT = Integer.parseInt(sharedPreferences.getString("port_address", "1145"));
+    List<Point> list;
 
     PointsDbOpenHelper pointsDbOpenHelper = new PointsDbOpenHelper(this);
 
@@ -60,13 +62,6 @@ public class LocationService extends Service {
                         locationResult.getLastLocation().getSpeed(),
                         locationResult.getLastLocation().getTime(),locationResult.getLastLocation().getAltitude());
                 pointsDbOpenHelper.addPoint(point);
-                Log.d(TAG, point.getLatitude() + ", " + point.getLatitude() + " " + point.getAltitude());
-                sendMessage(point);
-
-                Log.d(TAG, "Широта: " + pointsDbOpenHelper.getPoint(1).getLatitude()+
-                        "Долгота: "+ pointsDbOpenHelper.getPoint(1).getLongitude()+
-                        "Скороть: " + pointsDbOpenHelper.getPoint(1).getSpeed());
-
             }
         }
     };
@@ -93,16 +88,36 @@ public class LocationService extends Service {
             out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
             String str;
             while (true){
+                // Пакет авторизации
                 String crc = Crc16.crc16("2.0;1111111111;NA;");
                 String result = "#L#2.0;1111111111;NA;"+ crc +"\r\n";
-                Log.d(TAG, result);
                 out.write(result);
-
                 out.flush();// отправляем на сервер
-                str = in.readLine(); // ждем сообщения с сервера
-                Log.d(TAG,"Server response " + str) ;
+                // ждем сообщения с сервера
+                str = in.readLine();
+                Log.d(TAG,str);
+                if (str.equals("#AL#1")) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    list  =  pointsDbOpenHelper.getAllPoints();
+                    for (Point point : list) {
+                        stringBuilder.append(GettingPointsString.getString(point));
+                    }
+                    String send = "#B#"+ stringBuilder.toString()+Crc16.crc16(stringBuilder.toString()) +"\r\n";
+                    Log.d(TAG, send);
+                    out.write(send);
+                    out.flush();
+                    str = in.readLine();
+                    Log.d(TAG, "Response: " + str );
+                    if (str!=null){
+                        for (Point point : list) {
+                            pointsDbOpenHelper.deletePoint(point);
+
+                        }
+                    }else { break; }
+                } else {break;}
+
                 try {
-                    Thread.sleep(10000);
+                    Thread.sleep(50000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -158,16 +173,16 @@ public class LocationService extends Service {
                 notificationManager.createNotificationChannel(notificationChannel);
             }
         }
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
         interval = Integer.parseInt(sharedPreferences.getString("frequency", "500000"));
-        Log.d(TAG,interval + "");
         LocationRequest locationRequest = new LocationRequest();
-        locationRequest.setInterval(4000);
+        locationRequest.setInterval(interval*1000);
         locationRequest.setFastestInterval(2000);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
@@ -197,12 +212,7 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        threadSocket =new Thread(new Runnable() {
-            @Override
-            public void run() {
-                serverWork();
-            }
-        });
+        threadSocket =new Thread(this::serverWork);
         threadSocket.start();
         if (intent!= null){
             String action = intent.getAction();

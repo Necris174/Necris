@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -64,16 +65,19 @@ public class PointsDbOpenHelper extends SQLiteOpenHelper {
         if (cursor != null) {
             cursor.moveToFirst();
         }
+        cursor.close();
 
-        return new Point(Integer.parseInt(cursor.getString(0)), Double.parseDouble(cursor.getString(1)),
-                Double.parseDouble(cursor.getString(2)),
-                Float.parseFloat(cursor.getString(3)),
-                Double.parseDouble(cursor.getString(4)),
-                Double.parseDouble(cursor.getString(5)));
+        return new Point(cursor.getInt(0), cursor.getDouble(1),
+                cursor.getDouble(2),
+                cursor.getFloat(3),
+                cursor.getDouble(4),
+                cursor.getDouble(5));
     }
     public void deletePoint(Point point){
         SQLiteDatabase db = this.getWritableDatabase();
-        db.delete(Constants.TABLE_NAME,Constants._ID + "=?", new String[]{Constants._ID});
+        Log.d(Constants.TAG, "Delete point: " + point.getId());
+        db.delete(Constants.TABLE_NAME,Constants._ID + "=?", new String[]{String.valueOf(point.getId())});
+
     }
 
     public List<Point> getAllPoints(){
@@ -82,16 +86,19 @@ public class PointsDbOpenHelper extends SQLiteOpenHelper {
         String selectPoints = "SELECT * FROM " + Constants.TABLE_NAME;
         Cursor cursor = db.rawQuery(selectPoints,null);
         if (cursor.moveToFirst()){
-            do {
-                Point point = new Point(Integer.parseInt(cursor.getString(0)),
-                        Double.parseDouble(cursor.getString(1)),
-                        Double.parseDouble(cursor.getString(2)),
-                        Float.parseFloat(cursor.getString(3)),
-                        Double.parseDouble(cursor.getString(4)),
-                        Double.parseDouble(cursor.getString(5)));
-                pointList.add(point);
-            }while (cursor.moveToNext());
+            for (int i = 0; i < 20 ; i++) {
+                cursor.moveToNext();
+                    Point point = new Point(cursor.getInt(0),
+                            cursor.getDouble(1),
+                            cursor.getDouble(2),
+                            cursor.getFloat(3),
+                            cursor.getDouble(4),
+                            cursor.getDouble(5));
+                    pointList.add(point);
+            }
+
         }
+        cursor.close();
         return pointList;
     }
 }

@@ -28,11 +28,14 @@ public class MainActivity extends AppCompatActivity {
     private Button start;
     private String LocationUpdateTime;
     private static final int REQUEST_CODE_LOCATION_PERMISSION = 1;
+    private List<Point> list;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         PointsDbOpenHelper pointsDbOpenHelper = new PointsDbOpenHelper(this);
+
 
 
         textView = findViewById(R.id.textView2);
