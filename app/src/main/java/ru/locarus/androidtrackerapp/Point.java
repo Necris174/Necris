@@ -8,10 +8,10 @@ public class Point implements Serializable {
     private double latitude;
     private double longitude;
     private float speed;
-    private double time;
+    private long time;
     private double altitude;
 
-    public Point(double latitude, double longitude, float speed, double time, double altitude) {
+    public Point(double latitude, double longitude, float speed, long time, double altitude) {
         this.latitude = latitude;
         this.longitude = longitude;
         this.speed = speed;
@@ -19,7 +19,7 @@ public class Point implements Serializable {
         this.altitude = altitude;
     }
 
-    public Point(int id, double latitude, double longitude, float speed, double time, double altitude) {
+    public Point(int id, double latitude, double longitude, float speed, long time, double altitude) {
         this.id = id;
         this.latitude = latitude;
         this.longitude = longitude;
@@ -51,7 +51,7 @@ public class Point implements Serializable {
         this.speed = speed;
     }
 
-    public void setTime(double time) {
+    public void setTime(long time) {
         this.time = time;
     }
 
@@ -71,7 +71,7 @@ public class Point implements Serializable {
         return speed;
     }
 
-    public double getTime() {
+    public long getTime() {
         return time;
     }
 

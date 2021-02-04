@@ -70,12 +70,11 @@ public class PointsDbOpenHelper extends SQLiteOpenHelper {
         return new Point(cursor.getInt(0), cursor.getDouble(1),
                 cursor.getDouble(2),
                 cursor.getFloat(3),
-                cursor.getDouble(4),
+                cursor.getLong(4),
                 cursor.getDouble(5));
     }
     public void deletePoint(Point point){
         SQLiteDatabase db = this.getWritableDatabase();
-        Log.d(Constants.TAG, "Delete point: " + point.getId());
         db.delete(Constants.TABLE_NAME,Constants._ID + "=?", new String[]{String.valueOf(point.getId())});
 
     }
@@ -86,19 +85,21 @@ public class PointsDbOpenHelper extends SQLiteOpenHelper {
         String selectPoints = "SELECT * FROM " + Constants.TABLE_NAME;
         Cursor cursor = db.rawQuery(selectPoints,null);
         if (cursor.moveToFirst()){
-            for (int i = 0; i < 20 ; i++) {
-                cursor.moveToNext();
+            for (int i = 0; i < 20&&cursor.moveToNext() ; i++) {
                     Point point = new Point(cursor.getInt(0),
                             cursor.getDouble(1),
                             cursor.getDouble(2),
                             cursor.getFloat(3),
-                            cursor.getDouble(4),
+                            cursor.getLong(4),
                             cursor.getDouble(5));
                     pointList.add(point);
+                }
             }
-
-        }
         cursor.close();
+        for (Point point : pointList) {
+            Log.d(Constants.TAG, "ID: "+ point.getId()+"Latitude: "+point.getLatitude()+"Longitude: "+point.getLongitude()+"");
+        }
+
         return pointList;
     }
 }

@@ -38,14 +38,14 @@ import java.util.List;
 import static ru.locarus.androidtrackerapp.Constants.TAG;
 
 public class LocationService extends Service {
-    SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+    SharedPreferences sharedPreferences;
     Thread threadSocket;
     private int interval;
     private Socket socket;
     private BufferedReader in; // поток чтения из сокета
     private BufferedWriter out; // поток чтения в сокет
-    private String SERVER_IP = sharedPreferences.getString("server_address","lserver1.ru");
-    private int SERVER_PORT = Integer.parseInt(sharedPreferences.getString("port_address", "1145"));
+    private String SERVER_IP;
+    private int SERVER_PORT;
     List<Point> list;
 
     PointsDbOpenHelper pointsDbOpenHelper = new PointsDbOpenHelper(this);
@@ -62,6 +62,7 @@ public class LocationService extends Service {
                         locationResult.getLastLocation().getSpeed(),
                         locationResult.getLastLocation().getTime(),locationResult.getLastLocation().getAltitude());
                 pointsDbOpenHelper.addPoint(point);
+                Log.d(TAG, "ID: "+ point.getId()+ " Latitude: "+point.getLatitude() +" Longitude " + point.getLongitude()+ " Time: "+ point.getTime());
             }
         }
     };
@@ -76,6 +77,8 @@ public class LocationService extends Service {
     }
 
     public void serverWork() {
+        SERVER_IP = sharedPreferences.getString("server_address","lserver1.ru");
+        SERVER_PORT = Integer.parseInt(sharedPreferences.getString("port_address", "1145"));
         try {
             socket = new Socket(SERVER_IP, SERVER_PORT);
         } catch (IOException e) {
@@ -86,7 +89,7 @@ public class LocationService extends Service {
             // потоки чтения из сокета / записи в сокет, и чтения с консоли
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            String str;
+            String str = "No response";
             while (true){
                 // Пакет авторизации
                 String crc = Crc16.crc16("2.0;1111111111;NA;");
@@ -94,13 +97,19 @@ public class LocationService extends Service {
                 out.write(result);
                 out.flush();// отправляем на сервер
                 // ждем сообщения с сервера
+                try{
                 str = in.readLine();
+                } catch (IOException e){
+                    e.printStackTrace();
+                }
                 Log.d(TAG,str);
                 if (str.equals("#AL#1")) {
                     StringBuilder stringBuilder = new StringBuilder();
                     list  =  pointsDbOpenHelper.getAllPoints();
                     for (Point point : list) {
-                        stringBuilder.append(GettingPointsString.getString(point));
+                        if(point.getLongitude()<180&&point.getLatitude()<180) {
+                            stringBuilder.append(GettingPointsString.getString(point));
+                        }
                     }
                     String send = "#B#"+ stringBuilder.toString()+Crc16.crc16(stringBuilder.toString()) +"\r\n";
                     Log.d(TAG, send);
@@ -117,7 +126,7 @@ public class LocationService extends Service {
                 } else {break;}
 
                 try {
-                    Thread.sleep(50000);
+                    Thread.sleep(60000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -212,6 +221,7 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         threadSocket =new Thread(this::serverWork);
         threadSocket.start();
         if (intent!= null){

@@ -7,14 +7,16 @@ import java.text.SimpleDateFormat;
 
 public class GettingPointsString {
 
-    private static String getData(double data){
+    private static String getData(long data){
         return new SimpleDateFormat("ddMMyy;").format(data);
     }
-    private static String getTime(double data){
+    private static String getTime(long data){
         return new SimpleDateFormat("HHmmss;").format(data);
     }
     private static String getLat (double lat){
+
         String latitude = Double.toString(lat);
+
         String grad = latitude.substring(0,latitude.indexOf("."));
         Double minutes = Double.parseDouble(latitude.substring(latitude.indexOf(".")));
         minutes =minutes*60;
