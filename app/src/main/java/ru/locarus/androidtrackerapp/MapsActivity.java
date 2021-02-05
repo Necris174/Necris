@@ -24,8 +24,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    private Double lat;
-    private Double lon;
+    private Double lat = 55.189769;
+    private Double lon = 61.365417;
     private Point point;
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
@@ -45,7 +45,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
+         // Стрелка выхода из Map
         ActionBar actionBar = this.getSupportActionBar();
         if(actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
@@ -59,18 +59,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void onReceive(Context context, Intent intent) {
             // Get extra data included in the Intent
-
-
                  point = (Point) intent.getExtras().getSerializable("point");
-                 Log.d("receiver", "Got message: " + point.getLatitude() + " " + point.getLongitude() + " " + point.getAltitude());
                  LatLng sydney = new LatLng(point.getLatitude(), point.getLongitude());
                  lat = point.getLatitude();
                  lon = point.getLongitude();
-
-            mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));}
-
+//                 mMap.clear();
+//            mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+//            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(sydney,12f));
+//            mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+           }
     };
 
     @Override
@@ -96,9 +93,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             // Add a marker in Sydney and move the camera
 
             LatLng sydney = new LatLng(lat, lon);
-            mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
             mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(sydney,12f));
+            mMap.addMarker(new MarkerOptions().position(sydney).title("1111111111"));
+
+
+
         }
     }
 }

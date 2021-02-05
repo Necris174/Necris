@@ -32,6 +32,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 
@@ -63,6 +64,7 @@ public class LocationService extends Service {
                         locationResult.getLastLocation().getTime(),locationResult.getLastLocation().getAltitude());
                 pointsDbOpenHelper.addPoint(point);
                 Log.d(TAG, "ID: "+ point.getId()+ " Latitude: "+point.getLatitude() +" Longitude " + point.getLongitude()+ " Time: "+ point.getTime());
+                sendMessage(point);
             }
         }
     };
@@ -79,67 +81,83 @@ public class LocationService extends Service {
     public void serverWork() {
         SERVER_IP = sharedPreferences.getString("server_address","lserver1.ru");
         SERVER_PORT = Integer.parseInt(sharedPreferences.getString("port_address", "1145"));
-        try {
-            socket = new Socket(SERVER_IP, SERVER_PORT);
-        } catch (IOException e) {
-            Log.d(TAG, "TCPClient: Socket failed");
-        }
-        try {
 
+        closeConnection();
+
+        try {
+            socket = new Socket();
+            socket.connect(new InetSocketAddress(SERVER_IP, SERVER_PORT),10000);
             // потоки чтения из сокета / записи в сокет, и чтения с консоли
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            String str = "No response";
-            while (true){
-                // Пакет авторизации
-                String crc = Crc16.crc16("2.0;1111111111;NA;");
-                String result = "#L#2.0;1111111111;NA;"+ crc +"\r\n";
-                out.write(result);
-                out.flush();// отправляем на сервер
-                // ждем сообщения с сервера
-                try{
-                str = in.readLine();
-                } catch (IOException e){
-                    e.printStackTrace();
-                }
-                Log.d(TAG,str);
-                if (str.equals("#AL#1")) {
-                    StringBuilder stringBuilder = new StringBuilder();
-                    list  =  pointsDbOpenHelper.getAllPoints();
-                    for (Point point : list) {
-                        if(point.getLongitude()<180&&point.getLatitude()<180) {
-                            stringBuilder.append(GettingPointsString.getString(point));
+            String str = "";
+            while (true) {
+                if (!Thread.interrupted()) {
+                    // Пакет авторизации
+                    String crc = Crc16.crc16("2.0;1111111111;NA;");
+                    String result = "#L#2.0;1111111111;NA;" + crc + "\r\n";
+                    out.write(result);
+                    out.flush();// отправляем на сервер
+                    // ждем сообщения с сервера
+                    str = in.readLine();
+
+                    if (str!=null){
+                        Log.d(TAG, "Ответ авторизации: " + str);
+                    }
+                    if (str == null) {
+                        Log.d(TAG, "No response");
+
+                    } else {
+                        if (str.equals("#AL#1")) {
+                            StringBuilder stringBuilder = new StringBuilder();
+                            list = pointsDbOpenHelper.getAllPoints();
+                            for (Point point : list) {
+                                Log.d(TAG,"points: "+ point.getLatitude()+" "+ point.getLongitude());
+                                if (point.getLongitude() < 180 && point.getLatitude() < 180) {
+                                    stringBuilder.append(GettingPointsString.getString(point));
+                                }
+                            }
+                            String send = "#B#" + stringBuilder.toString() + Crc16.crc16(stringBuilder.toString()) + "\r\n";
+                            Log.d(TAG, send);
+                            out.write(send);
+                            out.flush();
+                            str = in.readLine();
+                            Log.d(TAG, "Response: " + str);
+                            if (str != null) {
+                                for (Point point : list) {
+                                    pointsDbOpenHelper.deletePoint(point);
+
+                                }
+                            }
                         }
                     }
-                    String send = "#B#"+ stringBuilder.toString()+Crc16.crc16(stringBuilder.toString()) +"\r\n";
-                    Log.d(TAG, send);
-                    out.write(send);
-                    out.flush();
-                    str = in.readLine();
-                    Log.d(TAG, "Response: " + str );
-                    if (str!=null){
-                        for (Point point : list) {
-                            pointsDbOpenHelper.deletePoint(point);
 
-                        }
-                    }else { break; }
-                } else {break;}
-
-                try {
-                    Thread.sleep(60000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    try {
+                        Thread.sleep(60000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         } catch (IOException e) {
-            try {
-                if (!socket.isClosed()) {
-                    socket.close();
-                    in.close();
-                    out.close();
-                }
-            } catch (IOException ignored) {}
+            Log.d(TAG, "Socket closed "+ e.getMessage());
+          closeConnection();
+
         }
+    }
+    private void closeConnection(){
+        if (socket!=null&&!socket.isClosed()){
+            try{
+                socket.close();
+                in.close();
+                out.close();
+            }catch (IOException e){
+                Log.d(TAG, "Ошибка при открытии сокета" + e.getMessage());
+            } finally {
+                socket = null;
+            }
+        }
+        socket = null;
     }
 
     

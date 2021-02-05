@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <EditTextPreference
         android:title="Адрес сервера"
-        android:key="server_address" />
+        android:key="server_address"
+        android:defaultValue="lserver1.ru"/>
     <EditTextPreference
         android:title="Порт"
-        android:key="port_address" />
+        android:key="port_address"
+        android:defaultValue="1145"/>
     <EditTextPreference
         android:title="Имя устройства"
         android:key="device_name" />
     <EditTextPreference
         android:defaultValue="false"
         android:key="frequency"
-        android:title="Частота формирования точек, c">
+        android:title="Частота формирования точек, c"
+        app:defaultValue="10">
     </EditTextPreference>
 </PreferenceScreen>

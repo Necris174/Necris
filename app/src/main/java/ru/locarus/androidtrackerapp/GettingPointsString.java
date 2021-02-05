@@ -4,14 +4,20 @@ import android.util.Log;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 public class GettingPointsString {
 
     private static String getData(long data){
-        return new SimpleDateFormat("ddMMyy;").format(data);
+        SimpleDateFormat sf = new SimpleDateFormat("ddMMyy;");
+        sf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sf.format(new Date(data));
     }
     private static String getTime(long data){
-        return new SimpleDateFormat("HHmmss;").format(data);
+        SimpleDateFormat sf = new SimpleDateFormat("HHmmss;");
+        sf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sf.format(new Date(data));
     }
     private static String getLat (double lat){
 

@@ -84,19 +84,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void startLocationService(){
 
-            Log.d("LOCATION", "startLocationService");
+            Log.d(TAG, "startLocationService");
             Intent intent = new Intent(getApplicationContext(),LocationService.class);
             intent.setAction(Constants.ACTION_START_LOCATION_SERVICE);
             startService(intent);
-            Toast.makeText(this,"Location setvice started", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Location service started", Toast.LENGTH_SHORT).show();
 
     }
     private void stopLocationService (){
-        Log.d("LOCATION", "stoptLocationService");
+        Log.d(TAG, "stopLocationService");
             Intent intent = new Intent(getApplicationContext(),LocationService.class);
             intent.setAction(Constants.ACTION_STOP_LOCATION_SERVICE);
             startService(intent);
-            Toast.makeText(this,"Location setvice stopped", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Location service stopped", Toast.LENGTH_SHORT).show();
 
     }
 

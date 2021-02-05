@@ -84,7 +84,7 @@ public class PointsDbOpenHelper extends SQLiteOpenHelper {
         List<Point> pointList = new ArrayList<>();
         String selectPoints = "SELECT * FROM " + Constants.TABLE_NAME;
         Cursor cursor = db.rawQuery(selectPoints,null);
-        if (cursor.moveToFirst()){
+        if (!cursor.isClosed()&&cursor.moveToFirst()){
             for (int i = 0; i < 20&&cursor.moveToNext() ; i++) {
                     Point point = new Point(cursor.getInt(0),
                             cursor.getDouble(1),
