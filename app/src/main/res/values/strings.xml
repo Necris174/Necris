@@ -4,8 +4,10 @@
     <string name="textview">Координаты</string>
     <string name="button">Button</string>
     <string name="Карта">Карта</string>
-    <string name="Настройки">Настройки</string>
+    <string name="Settings">Настройки</string>
     <string name="Старт">Старт</string>
     <string name="title_activity_maps2">Карта</string>
     <string name="title_activity_maps">Map</string>
+    <string name="Server">Server</string>
+    <string name="Location">Location</string>
 </resources>

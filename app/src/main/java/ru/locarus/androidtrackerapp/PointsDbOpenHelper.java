@@ -96,10 +96,6 @@ public class PointsDbOpenHelper extends SQLiteOpenHelper {
                 }
             }
         cursor.close();
-        for (Point point : pointList) {
-            Log.d(Constants.TAG, "ID: "+ point.getId()+"Latitude: "+point.getLatitude()+"Longitude: "+point.getLongitude()+"");
-        }
-
         return pointList;
     }
 }

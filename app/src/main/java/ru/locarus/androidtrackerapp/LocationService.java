@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
@@ -34,40 +35,57 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Date;
 import java.util.List;
 
 import static ru.locarus.androidtrackerapp.Constants.TAG;
 
 public class LocationService extends Service {
-    SharedPreferences sharedPreferences;
-    Thread threadSocket;
+    private SharedPreferences sharedPreferences;
+    private Thread threadSocket;
+    private Thread pointsAdd;
     private int interval;
     private Socket socket;
     private BufferedReader in; // поток чтения из сокета
     private BufferedWriter out; // поток чтения в сокет
     private String SERVER_IP;
     private int SERVER_PORT;
-    List<Point> list;
+    private List<Point> list;
+    private double latitude = 0;
+    private double longitude = 0;
+    private float speed = 0;
+    private long time = 0 ;
+    private double altitude = 0;
 
-    PointsDbOpenHelper pointsDbOpenHelper = new PointsDbOpenHelper(this);
 
+
+
+
+    private final PointsDbOpenHelper pointsDbOpenHelper = new PointsDbOpenHelper(this);
 
     private LocationCallback locationCallback = new LocationCallback() {
         @Override
         public void onLocationResult(LocationResult locationResult) {
             super.onLocationResult(locationResult);
             if (locationResult != null && locationResult.getLastLocation() != null) {
-
-                Point point = new Point(locationResult.getLastLocation().getLatitude(),
-                        locationResult.getLastLocation().getLongitude(),
-                        locationResult.getLastLocation().getSpeed(),
-                        locationResult.getLastLocation().getTime(),locationResult.getLastLocation().getAltitude());
-                pointsDbOpenHelper.addPoint(point);
-                Log.d(TAG, "ID: "+ point.getId()+ " Latitude: "+point.getLatitude() +" Longitude " + point.getLongitude()+ " Time: "+ point.getTime());
-                sendMessage(point);
+                    sendStatus(Constants.ACTION_START_LOCATION_SERVICE);
+                    latitude = locationResult.getLastLocation().getLatitude();
+                    longitude= locationResult.getLastLocation().getLongitude();
+                    speed = locationResult.getLastLocation().getSpeed();
+                    time  = locationResult.getLastLocation().getTime();
+                    altitude = locationResult.getLastLocation().getAltitude();
+            } else {
+                sendStatus(Constants.ACTION_STOP_LOCATION_SERVICE);
+                Log.d(TAG, "Point = null");
             }
         }
     };
+
+    private void sendStatus (String string) {
+        Intent intent = new Intent("Status");
+        intent.putExtra("status", string);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
 
     private void sendMessage(Point point) {
 
@@ -77,56 +95,84 @@ public class LocationService extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
 
     }
-
-    public void serverWork() {
-        SERVER_IP = sharedPreferences.getString("server_address","lserver1.ru");
-        SERVER_PORT = Integer.parseInt(sharedPreferences.getString("port_address", "1145"));
-
-        closeConnection();
-
-        try {
-            socket = new Socket();
-            socket.connect(new InetSocketAddress(SERVER_IP, SERVER_PORT),10000);
-            // потоки чтения из сокета / записи в сокет, и чтения с консоли
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            String str = "";
-            while (true) {
-                if (!Thread.interrupted()) {
-                    // Пакет авторизации
-                    String crc = Crc16.crc16("2.0;1111111111;NA;");
-                    String result = "#L#2.0;1111111111;NA;" + crc + "\r\n";
-                    out.write(result);
-                    out.flush();// отправляем на сервер
-                    // ждем сообщения с сервера
-                    str = in.readLine();
-
-                    if (str!=null){
-                        Log.d(TAG, "Ответ авторизации: " + str);
+    public void dBWorker(){
+        long tmp = 0;
+        while (!Thread.currentThread().isInterrupted()) {
+            if (latitude!= 0) {
+                if (time!= tmp) {
+                    synchronized (pointsDbOpenHelper) {
+                        pointsDbOpenHelper.addPoint(new Point(latitude, longitude, speed, time, altitude));
                     }
-                    if (str == null) {
-                        Log.d(TAG, "No response");
+                    Log.d(TAG, "Latitude: " + latitude + " Longitude " + longitude + " Time: " + time);
+                    sendMessage(new Point(latitude, longitude));
+                    tmp = time;
+                } else {
+                    synchronized (pointsDbOpenHelper) {
+                        pointsDbOpenHelper.addPoint(new Point(latitude, longitude, speed, new Date().getTime(), altitude));
+                    }
+                    Log.d(TAG, "Latitude: " + latitude + " Longitude " + longitude + " Time: " + new Date().getTime());
+                    sendMessage(new Point(latitude, longitude));
+                }
+            }
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                Log.d(TAG, "Thread sleep "+ e);
+            }
+        }
+    }
+    public void serverWork() {
+        while (!Thread.currentThread().isInterrupted()) {
+            SERVER_IP = sharedPreferences.getString("server_address", "lserver1.ru");
+            SERVER_PORT = Integer.parseInt(sharedPreferences.getString("port_address", "1145"));
+            closeConnection();
+            try {
+                socket = new Socket();
+                socket.connect(new InetSocketAddress(SERVER_IP, SERVER_PORT), 10000);
+                sendStatus("start");
+                // потоки чтения из сокета / записи в сокет, и чтения с консоли
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                String str = "";
+                    // Пакет авторизации
+                String crc = Crc16.crc16("2.0;1111111111;NA;");
+                String result = "#L#2.0;1111111111;NA;" + crc + "\r\n";
+                out.write(result);
+                out.flush();// отправляем на сервер
+                // ждем сообщения с сервера
+                str = in.readLine();
+
+                if (str != null) {
+                    Log.d(TAG, "Ответ авторизации: " + str);
+                }
+                if (str == null) {
+                    Log.d(TAG, "No response");
 
                     } else {
                         if (str.equals("#AL#1")) {
-                            StringBuilder stringBuilder = new StringBuilder();
-                            list = pointsDbOpenHelper.getAllPoints();
-                            for (Point point : list) {
-                                Log.d(TAG,"points: "+ point.getLatitude()+" "+ point.getLongitude());
-                                if (point.getLongitude() < 180 && point.getLatitude() < 180) {
-                                    stringBuilder.append(GettingPointsString.getString(point));
-                                }
-                            }
-                            String send = "#B#" + stringBuilder.toString() + Crc16.crc16(stringBuilder.toString()) + "\r\n";
-                            Log.d(TAG, send);
-                            out.write(send);
-                            out.flush();
-                            str = in.readLine();
-                            Log.d(TAG, "Response: " + str);
-                            if (str != null) {
-                                for (Point point : list) {
-                                    pointsDbOpenHelper.deletePoint(point);
 
+                            StringBuilder stringBuilder = new StringBuilder();
+                            synchronized (pointsDbOpenHelper) {
+                                list = pointsDbOpenHelper.getAllPoints();
+                            }
+                            if (!list.isEmpty()) {
+                                for (Point point : list) {
+                                    if (point.getLongitude() < 180 && point.getLatitude() < 180) {
+                                        stringBuilder.append(GettingPointsString.getString(point));
+                                    }
+                                }
+                                String send = "#B#" + stringBuilder.toString() + Crc16.crc16(stringBuilder.toString()) + "\r\n";
+                                Log.d(TAG, send);
+                                out.write(send);
+                                out.flush();
+                                str = in.readLine();
+                                Log.d(TAG, "Response: " + str);
+                                if (str != null) {
+                                    synchronized (pointsDbOpenHelper) {
+                                        for (Point point : list) {
+                                            pointsDbOpenHelper.deletePoint(point);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -135,33 +181,34 @@ public class LocationService extends Service {
                     try {
                         Thread.sleep(60000);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        Log.d(TAG, "Interrupt: " + e);
+                        sendStatus("stop");
                     }
-                }
-            }
         } catch (IOException e) {
-            Log.d(TAG, "Socket closed "+ e.getMessage());
-          closeConnection();
-
+            Log.d(TAG, "Socket closed " + e.getMessage());
+                closeConnection();
+                sendStatus("stop");
+                try {
+                    Thread.sleep(60000);
+                } catch (InterruptedException ie) {
+                    Log.d(TAG, "Thread sleep: " + ie);
+                }
         }
+
+    }
     }
     private void closeConnection(){
         if (socket!=null&&!socket.isClosed()){
             try{
                 socket.close();
-                in.close();
-                out.close();
             }catch (IOException e){
-                Log.d(TAG, "Ошибка при открытии сокета" + e.getMessage());
+                Log.d(TAG, "Ошибка при закрытии сокета" + e.getMessage());
             } finally {
                 socket = null;
             }
         }
         socket = null;
     }
-
-    
-
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -172,7 +219,7 @@ public class LocationService extends Service {
         String channelid = "location_notification_channel";
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        Intent resultIntent = new Intent();
+        Intent resultIntent = new Intent(this,MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 getApplicationContext(),
                 0,
@@ -201,7 +248,7 @@ public class LocationService extends Service {
             }
         }
 
-        interval = Integer.parseInt(sharedPreferences.getString("frequency", "500000"));
+        interval = Integer.parseInt(sharedPreferences.getString("frequency", "10"));
         LocationRequest locationRequest = new LocationRequest();
         locationRequest.setInterval(interval*1000);
         locationRequest.setFastestInterval(2000);
@@ -222,35 +269,45 @@ public class LocationService extends Service {
         LocationServices.getFusedLocationProviderClient(this)
                 .requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
         startForeground(Constants.LOCATION_SERVICE_ID,builder.build());
+        threadSocket.start();
+        pointsAdd.start();
     }
     private void stopLocationService() {
+        if (threadSocket!=null&&pointsAdd!=null) {
+            threadSocket.interrupt();
+            pointsAdd.interrupt();
+        }
         LocationServices.getFusedLocationProviderClient(this)
                 .removeLocationUpdates(locationCallback);
         stopForeground(true);
         stopSelf();
-        threadSocket.interrupt();
+        sendStatus(Constants.ACTION_STOP_LOCATION_SERVICE);
     }
 
 
-
-
-
-
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (threadSocket!=null&&pointsAdd!=null) {
+            threadSocket.interrupt();
+            pointsAdd.interrupt();
+        }
+        closeConnection();
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
          sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        threadSocket =new Thread(this::serverWork);
-        threadSocket.start();
+
         if (intent!= null){
             String action = intent.getAction();
             if(action != null){
                 if(action.equals((Constants.ACTION_START_LOCATION_SERVICE))){
+                    threadSocket =new MyThread(this::serverWork);
+                    pointsAdd =new MyThread(this::dBWorker);
                     startLocationService();
                 }else if(action.equals(Constants.ACTION_STOP_LOCATION_SERVICE)){
                     stopLocationService();
-
-
                 }
             }
         }

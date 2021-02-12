@@ -5,10 +5,11 @@ import android.util.Log;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 public class GettingPointsString {
-
+    static String latLon;
     private static String getData(long data){
         SimpleDateFormat sf = new SimpleDateFormat("ddMMyy;");
         sf.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -20,37 +21,15 @@ public class GettingPointsString {
         return sf.format(new Date(data));
     }
     private static String getLat (double lat){
-
-        String latitude = Double.toString(lat);
-
-        String grad = latitude.substring(0,latitude.indexOf("."));
-        Double minutes = Double.parseDouble(latitude.substring(latitude.indexOf(".")));
-        minutes =minutes*60;
-        String min = Double.toString(minutes).substring(0,7);
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(grad);
-        stringBuilder.append(min);
-        stringBuilder.append(";N;");
-        return stringBuilder.toString();
+        String latitude =  lat > 0 ? ";N;": ";S;";
+        double result = Math.abs((int)lat*100 + (int)(lat%1*60) + (lat%1*60)%1);
+        return String.format(Locale.US,"%09.4f",result) + latitude;
     }
     private static String getLon (double lon){
-        StringBuilder stringBuilder = new StringBuilder();
-        String latitude = Double.toString(lon);
-        String grad = latitude.substring(0,latitude.indexOf("."));
-        if (grad.length()<2){
-            stringBuilder.append("00");
-        } else if (grad.length()<3) {
-            stringBuilder.append("0");
-        }
-            Double minutes = Double.parseDouble(latitude.substring(latitude.indexOf(".")));
-            minutes = minutes * 60;
-            String min = Double.toString(minutes).substring(0, 7);
-            stringBuilder.append(grad);
-            stringBuilder.append(min);
-            stringBuilder.append(";E;");
+        String longitude =  lon > 0 ? ";E;": ";W;";
+        double result = Math.abs((int)lon*100 + (int)(lon%1*60) + (lon%1*60)%1);
 
-
-        return stringBuilder.toString();
+        return String.format(Locale.US,"%010.4f",result)+ longitude;
     }
     private static Integer getSpeed (float speed){
         return (int)speed;
