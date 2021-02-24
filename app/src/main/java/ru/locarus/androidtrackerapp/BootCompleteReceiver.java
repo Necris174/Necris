@@ -14,16 +14,19 @@ public class BootCompleteReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-                SharedPreferences sharedPreferences = context.getSharedPreferences("ButtonStatus", Context.MODE_PRIVATE);
-                String
-
-
+        SharedPreferences sharedPreferences = context.getSharedPreferences("ButtonStatus", Context.MODE_PRIVATE);
+        if (sharedPreferences.getString("ButtonStatus","Старт").equals("Стоп")) {
             Intent service = new Intent(context,LocationService.class);
             service.setAction(Constants.ACTION_START_LOCATION_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(service);
-        } else {
-            context.startService(service);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(service);
+            } else {
+                context.startService(service);
+            }
+
         }
+
+
     }
 }
